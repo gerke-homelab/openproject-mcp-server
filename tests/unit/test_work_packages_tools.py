@@ -500,3 +500,79 @@ async def test_get_work_package_not_found():
 
         assert "❌" in result
         assert "9999" in result or "Not Found" in result
+
+
+# --- Pagination footer regression tests (WP #1011) -----------------------------
+#
+# The client translates row offset → page number; these tests exercise the *tool*
+# footer arithmetic given what a correctly-paging client returns. The footer must
+# never render a start index greater than its end index.
+
+
+def _wp(idx: int) -> dict:
+    return {
+        "id": idx,
+        "subject": f"WP {idx}",
+        "_embedded": {
+            "type": {"name": "Task"},
+            "status": {"name": "New"},
+            "priority": {"name": "Normal"},
+        },
+    }
+
+
+async def test_list_work_packages_two_page_traversal():
+    # 23 items, page_size 20: page 1 → items 1-20, page 2 → items 21-23.
+    with patch("src.tools.work_packages.get_client") as mock_get_client:
+        mock_client = AsyncMock()
+
+        async def fake_get(*, offset, page_size, **_):
+            all_items = [_wp(i) for i in range(1, 24)]
+            page = all_items[offset : offset + page_size]
+            return {"_embedded": {"elements": page}, "total": 23}
+
+        mock_client.get_work_packages = AsyncMock(side_effect=fake_get)
+        mock_get_client.return_value = mock_client
+
+        page1 = await list_work_packages(offset=0, page_size=20)
+        assert "Showing 1-20 of 23 total" in page1
+        assert "offset=20" in page1  # advertises next page
+
+        page2 = await list_work_packages(offset=20, page_size=20)
+        assert "Showing 21-23 of 23 total" in page2
+        # Last page: no start>end, and no bogus next-page suggestion.
+        assert "Showing 21-20" not in page2
+        assert "offset=40" not in page2
+
+
+async def test_list_work_packages_rejects_non_multiple_offset():
+    # offset=1 is not a page boundary: reject before any API call.
+    with patch("src.tools.work_packages.get_client") as mock_get_client:
+        mock_client = AsyncMock()
+        mock_get_client.return_value = mock_client
+        result = await list_work_packages(offset=1, page_size=20)
+        assert "multiple of page_size" in result
+        mock_client.get_work_packages.assert_not_called()
+
+
+async def test_search_work_packages_rejects_non_multiple_offset():
+    with patch("src.tools.work_packages.get_client") as mock_get_client:
+        mock_client = AsyncMock()
+        mock_get_client.return_value = mock_client
+        result = await search_work_packages("anything", offset=1, page_size=20)
+        assert "multiple of page_size" in result
+        mock_client.get_work_packages.assert_not_called()
+
+
+async def test_list_work_packages_footer_never_inverts_when_page_empty():
+    # An offset past the end returns no rows: the footer must not claim "21-20".
+    with patch("src.tools.work_packages.get_client") as mock_get_client:
+        mock_client = AsyncMock()
+        mock_client.get_work_packages = AsyncMock(
+            return_value={"_embedded": {"elements": []}, "total": 23}
+        )
+        mock_get_client.return_value = mock_client
+
+        result = await list_work_packages(offset=40, page_size=20)
+        assert "Showing 41-40" not in result
+        assert "No work packages found" in result

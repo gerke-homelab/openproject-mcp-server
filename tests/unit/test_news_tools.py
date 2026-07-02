@@ -300,3 +300,15 @@ async def test_tools_with_mocks():
         result = await list_news()
         assert "❌" in result
         assert "Failed" in result or "Error" in result
+
+
+async def test_list_news_rejects_non_multiple_offset():
+    # offset=1 is not a page boundary: reject before any API call.
+    from src.tools.news import list_news
+
+    with patch("src.tools.news.get_client") as mock_get_client:
+        mock_client = AsyncMock()
+        mock_get_client.return_value = mock_client
+        result = await list_news(offset=1, page_size=20)
+        assert "multiple of page_size" in result
+        mock_client.get_news.assert_not_called()

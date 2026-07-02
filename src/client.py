@@ -29,6 +29,27 @@ __version__ = "3.0.0"
 _CUSTOM_FIELD_KEY = re.compile(r"^customField\d+$")
 
 
+def _offset_to_page(offset: int | None, page_size: int | None) -> int | None:
+    """Translate a caller-supplied row offset into OpenProject's page number.
+
+    OpenProject API v3's ``offset`` query parameter is a **1-based page number**,
+    not a row index (see https://www.openproject.org/docs/api/collections — "offset
+    (page number for offset-based pagination)"). Our tools, however, expose
+    ``offset`` as a starting *row* index (0, page_size, 2*page_size, …). Passing
+    that value straight through made ``offset=page_size`` request page N and return
+    zero results for any multi-page result set (WP #1011).
+
+    Returns ``None`` when ``offset`` is ``None`` so callers can omit the parameter.
+    """
+    if offset is None:
+        return None
+    if not page_size or page_size < 1:
+        # No page size to divide by — treat the value as an already-1-based page.
+        return offset if offset >= 1 else 1
+    # Clamp to a valid 1-based page: a negative offset floor-divides below 1.
+    return max(1, (offset // page_size) + 1)
+
+
 def _merge_custom_fields(
     payload: dict,
     custom_fields: dict | None,
@@ -424,8 +445,10 @@ class OpenProjectClient:
         if filters:
             encoded_filters = quote(filters)
             query_params.append(f"filters={encoded_filters}")
-        if offset is not None:
-            query_params.append(f"offset={offset}")
+        # OpenProject's `offset` param is a 1-based page number, not a row index.
+        page = _offset_to_page(offset, page_size)
+        if page is not None:
+            query_params.append(f"offset={page}")
         if page_size is not None:
             query_params.append(f"pageSize={page_size}")
 
@@ -1393,8 +1416,10 @@ class OpenProjectClient:
 
         # Build query parameters
         query_params = [f"filters={quote(filters)}"]
-        if offset is not None:
-            query_params.append(f"offset={offset}")
+        # OpenProject's `offset` param is a 1-based page number, not a row index.
+        page = _offset_to_page(offset, page_size)
+        if page is not None:
+            query_params.append(f"offset={page}")
         if page_size is not None:
             query_params.append(f"pageSize={page_size}")
 
@@ -1555,8 +1580,10 @@ class OpenProjectClient:
         if sort_by:
             encoded_sort = quote(sort_by)
             query_params.append(f"sortBy={encoded_sort}")
-        if offset is not None:
-            query_params.append(f"offset={offset}")
+        # OpenProject's `offset` param is a 1-based page number, not a row index.
+        page = _offset_to_page(offset, page_size)
+        if page is not None:
+            query_params.append(f"offset={page}")
         if page_size is not None:
             query_params.append(f"pageSize={page_size}")
 

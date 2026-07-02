@@ -66,6 +66,67 @@ async def test_search_work_packages(
         await client.delete_work_package(wp_id)
 
 
+async def test_pagination_offset_traverses_all_pages(
+    client: OpenProjectClient, project_id: int, wp_type_id: int
+) -> None:
+    """Offset paging must reach rows beyond the first page (regression: WP #1011).
+
+    OpenProject's `offset` query param is a 1-based page number; the client
+    translates the caller's row offset into it. Before the fix, `offset=page_size`
+    was sent verbatim, asked for page N, and returned zero results — stranding
+    every row past the first page. This creates 3 WPs and walks them with
+    page_size=2 (two pages), asserting the second page is non-empty and every
+    created WP is reachable exactly once.
+    """
+    marker = "pgtraverse-probe-wp1011"
+    page_size = 2
+    created: list[int] = []
+    try:
+        for i in range(3):
+            res = await client.create_work_package(
+                {
+                    "project": project_id,
+                    "subject": f"{marker}-{i}",
+                    "type": wp_type_id,
+                }
+            )
+            created.append(res["id"])
+
+        filters = json.dumps([{"subjectOrId": {"operator": "**", "values": [marker]}}])
+
+        # Walk every page via row-offset stepping and union the IDs seen.
+        seen: list[int] = []
+        second_page_nonempty = False
+        offset = 0
+        while True:
+            page = await client.get_work_packages(
+                project_id=project_id,
+                filters=filters,
+                offset=offset,
+                page_size=page_size,
+            )
+            elements = extract_elements(page)
+            if offset == page_size:  # the exact offset that WP #1011 broke
+                second_page_nonempty = bool(elements)
+            seen.extend(e["id"] for e in elements)
+            if offset + page_size >= page.get("total", 0):
+                break
+            offset += page_size
+
+        assert second_page_nonempty, (
+            "offset=page_size returned zero results — WP #1011 regression"
+        )
+        for wp_id in created:
+            assert wp_id in seen, f"WP {wp_id} unreachable via offset paging: {seen}"
+        assert len(seen) == len(set(seen)), f"duplicate IDs across pages: {seen}"
+    finally:
+        for wp_id in created:
+            try:
+                await client.delete_work_package(wp_id)
+            except Exception:
+                pass  # best-effort cleanup; don't mask assertion failures
+
+
 async def test_list_types(client: OpenProjectClient, project_id: int) -> None:
     result = await client.get_types(project_id)
     types = extract_elements(result)

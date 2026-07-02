@@ -86,3 +86,13 @@ async def test_remove_work_package_parent():
         assert "✅" in result, f"Expected success emoji, got: {result}"
         assert "20" in result, f"Expected WP ID in result, got: {result}"
         print("✅ test_remove_work_package_parent passed")
+
+
+async def test_list_work_package_children_rejects_non_multiple_offset():
+    # offset=1 is not a page boundary: reject before any API call.
+    with patch("src.tools.hierarchy.get_client") as mock_get_client:
+        mock_client = AsyncMock()
+        mock_get_client.return_value = mock_client
+        result = await list_work_package_children(42, offset=1, page_size=20)
+        assert "multiple of page_size" in result
+        mock_client.list_work_package_children.assert_not_called()

@@ -13,6 +13,7 @@ from src.utils.formatting import (
     format_success,
     format_work_package_detail,
     format_work_package_list,
+    validate_pagination,
 )
 
 
@@ -372,10 +373,8 @@ async def list_work_packages(
         filters = json.dumps(filters_list) if filters_list else None
 
         # Validate pagination parameters
-        if offset < 0:
-            return format_error("offset must be >= 0")
-        if page_size < 1 or page_size > 100:
-            return format_error("page_size must be between 1 and 100")
+        if err := validate_pagination(offset, page_size):
+            return err
 
         result = await client.get_work_packages(
             project_id=project_id, filters=filters, offset=offset, page_size=page_size
@@ -387,10 +386,14 @@ async def list_work_packages(
         # Format response
         text = format_work_package_list(work_packages)
 
-        # Add pagination info
-        if total > page_size:
-            text += f"\n📄 **Pagination**: Showing {offset + 1}-{offset + len(work_packages)} of {total} total\n"
-            text += f"   Use `offset={offset + page_size}` to see next page\n"
+        # Add pagination info (only when a further page exists AND rows came back,
+        # so the range can never invert to start > end on an out-of-range offset).
+        if total > page_size and work_packages:
+            start = offset + 1
+            end = offset + len(work_packages)
+            text += f"\n📄 **Pagination**: Showing {start}-{end} of {total} total\n"
+            if end < total:
+                text += f"   Use `offset={offset + page_size}` to see next page\n"
 
         return text
 
@@ -459,10 +462,8 @@ async def search_work_packages(
         filters = json.dumps(filters_list)
 
         # Validate pagination parameters
-        if offset < 0:
-            return format_error("offset must be >= 0")
-        if page_size < 1 or page_size > 100:
-            return format_error("page_size must be between 1 and 100")
+        if err := validate_pagination(offset, page_size):
+            return err
 
         result = await client.get_work_packages(
             project_id=project_id, filters=filters, offset=offset, page_size=page_size
@@ -483,10 +484,14 @@ async def search_work_packages(
         text = f"🔍 **Search Results for '{query}'**: Found {total} work package(s)\n\n"
         text += format_work_package_list(work_packages)
 
-        # Add pagination info
-        if total > page_size:
-            text += f"\n📄 **Pagination**: Showing {offset + 1}-{offset + len(work_packages)} of {total} total\n"
-            text += f"   Use `offset={offset + page_size}` to see next page\n"
+        # Add pagination info (only when a further page exists AND rows came back,
+        # so the range can never invert to start > end on an out-of-range offset).
+        if total > page_size and work_packages:
+            start = offset + 1
+            end = offset + len(work_packages)
+            text += f"\n📄 **Pagination**: Showing {start}-{end} of {total} total\n"
+            if end < total:
+                text += f"   Use `offset={offset + page_size}` to see next page\n"
 
         return text
 
