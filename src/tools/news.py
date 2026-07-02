@@ -11,6 +11,7 @@ from src.utils.formatting import (
     format_news_detail,
     format_news_list,
     format_success,
+    validate_pagination,
 )
 
 # ============================================================
@@ -69,6 +70,9 @@ async def list_news(
         }
     """
     try:
+        if err := validate_pagination(offset, page_size):
+            return err
+
         client = get_client()
 
         # Build filters if project_id provided

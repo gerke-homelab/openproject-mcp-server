@@ -2,7 +2,12 @@
 
 from src.server import get_client
 from src.tool_registry import tracked_tool
-from src.utils.formatting import format_error, format_success, format_work_package_list
+from src.utils.formatting import (
+    format_error,
+    format_success,
+    format_work_package_list,
+    validate_pagination,
+)
 
 
 @tracked_tool(
@@ -97,6 +102,9 @@ async def list_work_package_children(
         List of child work packages
     """
     try:
+        if err := validate_pagination(offset, page_size):
+            return err
+
         client = get_client()
 
         result = await client.list_work_package_children(

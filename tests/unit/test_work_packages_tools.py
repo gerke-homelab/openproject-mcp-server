@@ -545,6 +545,25 @@ async def test_list_work_packages_two_page_traversal():
         assert "offset=40" not in page2
 
 
+async def test_list_work_packages_rejects_non_multiple_offset():
+    # offset=1 is not a page boundary: reject before any API call.
+    with patch("src.tools.work_packages.get_client") as mock_get_client:
+        mock_client = AsyncMock()
+        mock_get_client.return_value = mock_client
+        result = await list_work_packages(offset=1, page_size=20)
+        assert "multiple of page_size" in result
+        mock_client.get_work_packages.assert_not_called()
+
+
+async def test_search_work_packages_rejects_non_multiple_offset():
+    with patch("src.tools.work_packages.get_client") as mock_get_client:
+        mock_client = AsyncMock()
+        mock_get_client.return_value = mock_client
+        result = await search_work_packages("anything", offset=1, page_size=20)
+        assert "multiple of page_size" in result
+        mock_client.get_work_packages.assert_not_called()
+
+
 async def test_list_work_packages_footer_never_inverts_when_page_empty():
     # An offset past the end returns no rows: the footer must not claim "21-20".
     with patch("src.tools.work_packages.get_client") as mock_get_client:

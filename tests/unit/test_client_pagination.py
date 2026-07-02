@@ -13,6 +13,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from src.client import OpenProjectClient, _offset_to_page
+from src.utils.formatting import validate_pagination
 
 
 def _client() -> OpenProjectClient:
@@ -38,8 +39,42 @@ def test_offset_to_page(offset, page_size, expected_page):
     assert _offset_to_page(offset, page_size) == expected_page
 
 
+@pytest.mark.parametrize("offset", [-1, -20, -21, -100])
+def test_offset_to_page_never_below_one(offset):
+    # A negative offset floor-divides below 1; the helper must clamp to page 1
+    # so the API never receives offset=0 or a negative page number.
+    assert _offset_to_page(offset, 20) >= 1
+
+
 def test_offset_to_page_none_offset_stays_none():
     assert _offset_to_page(None, 20) is None
+
+
+# --- validate_pagination (shared row-offset contract) --------------------------
+
+
+@pytest.mark.parametrize("offset", [0, 20, 40, 100])
+def test_validate_pagination_accepts_page_boundaries(offset):
+    assert validate_pagination(offset, 20) is None
+
+
+@pytest.mark.parametrize("offset", [1, 5, 19, 21])
+def test_validate_pagination_rejects_non_multiple_offset(offset):
+    err = validate_pagination(offset, 20)
+    assert err is not None
+    assert "multiple of page_size" in err
+    assert err.startswith("❌")
+
+
+def test_validate_pagination_rejects_negative_offset():
+    err = validate_pagination(-1, 20)
+    assert err is not None and "offset must be >= 0" in err
+
+
+@pytest.mark.parametrize("page_size", [0, -1, 101])
+def test_validate_pagination_rejects_bad_page_size(page_size):
+    err = validate_pagination(0, page_size)
+    assert err is not None and "page_size must be between 1 and 100" in err
 
 
 def test_offset_to_page_without_page_size_treats_offset_as_page():

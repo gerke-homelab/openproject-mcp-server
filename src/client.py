@@ -46,7 +46,8 @@ def _offset_to_page(offset: int | None, page_size: int | None) -> int | None:
     if not page_size or page_size < 1:
         # No page size to divide by — treat the value as an already-1-based page.
         return offset if offset >= 1 else 1
-    return (offset // page_size) + 1
+    # Clamp to a valid 1-based page: a negative offset floor-divides below 1.
+    return max(1, (offset // page_size) + 1)
 
 
 def _merge_custom_fields(

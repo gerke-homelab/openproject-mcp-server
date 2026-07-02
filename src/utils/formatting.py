@@ -349,6 +349,31 @@ def format_success(message: str) -> str:
     return f"✅ {message}"
 
 
+def validate_pagination(offset: int, page_size: int) -> str | None:
+    """Validate the row-offset pagination args shared by paged tools.
+
+    ``offset`` is a starting *row* index and must be non-negative AND a multiple
+    of ``page_size``. The OpenProject API pages at page-size boundaries (the
+    client maps a row offset to a 1-based page number), so a non-boundary offset
+    like ``offset=1`` would silently return the containing page and misreport the
+    row range in the footer. Rejecting it up front keeps the row-offset contract
+    truthful and gives the caller a corrective message.
+
+    Returns a formatted error string when invalid, or ``None`` when the args are
+    acceptable.
+    """
+    if page_size < 1 or page_size > 100:
+        return format_error("page_size must be between 1 and 100")
+    if offset < 0:
+        return format_error("offset must be >= 0")
+    if offset % page_size != 0:
+        return format_error(
+            f"offset must be a multiple of page_size ({page_size}); got {offset}. "
+            f"Page with offset=0, {page_size}, {2 * page_size}, …"
+        )
+    return None
+
+
 def format_news_list(news_items: list[dict]) -> str:
     """Format news list with project, author, and dates.
 
