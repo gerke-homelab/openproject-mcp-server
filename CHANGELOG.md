@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.1.1](https://github.com/gerke-homelab/openproject-mcp-server/compare/v4.1.0...v4.1.1) (2026-08-04)
+
+
+### Bug Fixes
+
+* **api:** translate row offset to page number for pagination ([#59](https://github.com/gerke-homelab/openproject-mcp-server/issues/59)) ([f14bbe1](https://github.com/gerke-homelab/openproject-mcp-server/commit/f14bbe1c77fbdb508266df75022849e19744e3df))
+* **deps:** bump pygments past the GUID-regex ReDoS ([#87](https://github.com/gerke-homelab/openproject-mcp-server/issues/87)) ([4bb43f9](https://github.com/gerke-homelab/openproject-mcp-server/commit/4bb43f9557966d5780b03bebd964fcc65712bc43))
+
 ## [4.1.0](https://github.com/gerket/openproject-mcp-server/compare/v4.0.0...v4.1.0) (2026-06-27)
 
 
