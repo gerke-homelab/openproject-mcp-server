@@ -1,11 +1,19 @@
 ---
 # Dependabot version updates.
 #
-# Every ecosystem carries two groups, minor/patch and major. Grouping only
-# `[minor, patch]` does not quieten majors — it *excludes* them, and an excluded
-# update falls back to one PR per dependency. The major group keeps them out of
-# the routine batch, where they would ride in unread, while still arriving as a
-# single reviewable set rather than one PR per package.
+# Every ecosystem carries three groups. Grouping only `[minor, patch]` does not
+# quieten majors — it *excludes* them, and an excluded update falls back to one
+# PR per dependency. The major group keeps them out of the routine batch, where
+# they would ride in unread, while still arriving as a single reviewable set
+# rather than one PR per package.
+#
+# The third group per ecosystem is the catch-all, and the reason it exists is
+# not obvious. An `update-types` filter only matches updates carrying a semver
+# classification. A range widening (`>=8.0.0` to `>=9.1.1`) carries none, so it
+# matches neither group above it and escapes to an individual PR — regardless
+# of whether the numbers moved a major or a minor. Dependencies here are
+# declared as lower-bound ranges, so that is the common case, not the edge one.
+# Declared last, because a dependency joins the first group it matches.
 version: 2
 updates:
   # Python dependencies managed via uv (pyproject.toml + uv.lock).
@@ -23,6 +31,8 @@ updates:
         update-types: [minor, patch]
       python-major:
         update-types: [major]
+      python-other:
+        patterns: ["*"]
 
   # GitHub Actions used in CI workflows.
   - package-ecosystem: "github-actions"
@@ -40,6 +50,8 @@ updates:
         update-types: [minor, patch]
       actions-major:
         update-types: [major]
+      actions-other:
+        patterns: ["*"]
 
   # pre-commit hook revisions (ruff, mypy, pre-commit-hooks) — keeps the
   # .pre-commit-config.yaml pins from drifting below the pyproject dev-dep
@@ -59,3 +71,5 @@ updates:
         update-types: [minor, patch]
       pre-commit-major:
         update-types: [major]
+      pre-commit-other:
+        patterns: ["*"]
