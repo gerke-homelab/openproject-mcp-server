@@ -1,3 +1,11 @@
+---
+# Dependabot version updates.
+#
+# Every ecosystem carries two groups, minor/patch and major. Grouping only
+# `[minor, patch]` does not quieten majors — it *excludes* them, and an excluded
+# update falls back to one PR per dependency. The major group keeps them out of
+# the routine batch, where they would ride in unread, while still arriving as a
+# single reviewable set rather than one PR per package.
 version: 2
 updates:
   # Python dependencies managed via uv (pyproject.toml + uv.lock).
@@ -10,6 +18,11 @@ updates:
       prefix: "chore(deps)"
     labels:
       - "dependencies"
+    groups:
+      python-minor-and-patch:
+        update-types: [minor, patch]
+      python-major:
+        update-types: [major]
 
   # GitHub Actions used in CI workflows.
   - package-ecosystem: "github-actions"
@@ -22,10 +35,15 @@ updates:
     labels:
       - "dependencies"
       - "github-actions"
+    groups:
+      actions:
+        update-types: [minor, patch]
+      actions-major:
+        update-types: [major]
 
   # pre-commit hook revisions (ruff, mypy, pre-commit-hooks) — keeps the
   # .pre-commit-config.yaml pins from drifting below the pyproject dev-dep
-  # floors, the drift that previously let lint debt accumulate uncaught.
+  # floors, which is how lint debt accumulates uncaught.
   - package-ecosystem: "pre-commit"
     directory: "/"
     schedule:
@@ -36,3 +54,8 @@ updates:
     labels:
       - "dependencies"
       - "pre-commit"
+    groups:
+      pre-commit-minor-and-patch:
+        update-types: [minor, patch]
+      pre-commit-major:
+        update-types: [major]
