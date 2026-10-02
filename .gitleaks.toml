@@ -1,0 +1,13 @@
+[extend]
+useDefault = true
+
+# The README's docker-run examples in this commit carry a placeholder
+# OPENPROJECT_API_KEY. A real OpenProject token is 64 hex characters, which
+# these are not. Scoped to the commit AND the file rather than to the value, so
+# a real token on the same line in any other commit is still reported.
+[[allowlists]]
+description = "Placeholder OPENPROJECT_API_KEY in README docker-run examples"
+condition = "AND"
+targetRules = ["generic-api-key"]
+commits = ["daf6a5734f9d920ffabbd7527f7caeb9aff6949a"]
+paths = ['''^README\.md$''']

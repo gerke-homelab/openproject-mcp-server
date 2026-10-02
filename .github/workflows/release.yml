@@ -1,9 +1,13 @@
+---
 name: Release
 
-on:
+on:  # yamllint disable-line rule:truthy
   push:
     tags:
       - "v*.*.*"
+
+permissions:
+  contents: read
 
 jobs:
   release:
@@ -12,7 +16,7 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0
 
@@ -23,12 +27,12 @@ jobs:
             (echo "Tag is not on a commit reachable from main" && exit 1)
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10.2.0
         with:
-          version: "latest"
+          version: "0.12.20"
 
       - name: Set up Python
-        run: uv python install $(cat .python-version)
+        run: uv python install "$(cat .python-version)"
 
       - name: Install dependencies
         run: uv sync --dev
@@ -43,7 +47,7 @@ jobs:
         run: uv build
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64  # v3.0.3
         with:
           files: dist/*
           generate_release_notes: true
