@@ -17,7 +17,40 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Markdown-only PRs skip the checks they cannot affect.
+  detect-changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # paths-filter reads the PR's file list through the API.
+      pull-requests: read
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d  # v4.0.3
+        id: filter
+        # Only a pull_request has two refs to compare; other events run
+        # every check (see the gated jobs' conditions).
+        if: github.event_name == 'pull_request'
+        with:
+          # Under the default `some` quantifier a negated pattern matches every
+          # path it does not name, so `code` is true for any change but Markdown.
+          filters: |
+            code:
+              - '!**/*.md'
+              # pyproject.toml names README.md as the package readme, so uv sync
+              # builds the project from it.
+              - 'README.md'
+
   lint:
+    # Fail closed: a job skipped after a failed `needs` reports `skipped`,
+    # which satisfies a required check.
+    needs: detect-changes
+    if: >-
+      ${{ !cancelled() && (github.event_name != 'pull_request'
+      || needs.detect-changes.result != 'success'
+      || needs.detect-changes.outputs.code == 'true') }}
     runs-on: ubuntu-latest
 
     steps:

@@ -17,7 +17,43 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Markdown-only PRs skip the checks they cannot affect.
+  detect-changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # paths-filter reads the PR's file list through the API.
+      pull-requests: read
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d  # v4.0.3
+        id: filter
+        # Only a pull_request has two refs to compare; other events run
+        # every check (see the gated jobs' conditions).
+        if: github.event_name == 'pull_request'
+        with:
+          # Under the default `some` quantifier a negated pattern matches every
+          # path it does not name, so `code` is true for any change but Markdown.
+          filters: |
+            code:
+              - '!**/*.md'
+              # README.md is the package readme uv sync builds from;
+              # test_news_validation.py asserts the setup doc exists.
+              - 'README.md'
+              - 'docs/integration-test-setup.md'
+
   test:
+    # Gated per step, so the job and its required context always report.
+    # Fail closed: CODE is true whenever detection did not succeed.
+    needs: detect-changes
+    if: ${{ !cancelled() }}
+    env:
+      CODE: >-
+        ${{ github.event_name != 'pull_request'
+        || needs.detect-changes.result != 'success'
+        || needs.detect-changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -25,19 +61,24 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        if: env.CODE == 'true'
 
       - name: Install uv
+        if: env.CODE == 'true'
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10.2.0
         with:
           version: "0.12.20"
 
       - name: Set up Python ${{ matrix.python-version }}
+        if: env.CODE == 'true'
         run: uv python install ${{ matrix.python-version }}
 
       - name: Install dependencies
+        if: env.CODE == 'true'
         run: uv sync --dev
 
       - name: Run tests
+        if: env.CODE == 'true'
         run: uv run pytest --tb=short -q
         env:
           OPENPROJECT_URL: http://test.example.com

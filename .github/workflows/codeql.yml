@@ -18,7 +18,39 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Markdown-only PRs skip the checks they cannot affect.
+  detect-changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # paths-filter reads the PR's file list through the API.
+      pull-requests: read
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d  # v4.0.3
+        id: filter
+        # Only a pull_request has two refs to compare; other events run
+        # every check (see the gated jobs' conditions).
+        if: github.event_name == 'pull_request'
+        with:
+          # Under the default `some` quantifier a negated pattern matches every
+          # path it does not name, so `code` is true for any change but Markdown.
+          filters: |
+            code:
+              - '!**/*.md'
+
   analyze:
+    # Gated per step, so the job and its required context always report.
+    # Fail closed: CODE is true whenever detection did not succeed.
+    needs: detect-changes
+    if: ${{ !cancelled() }}
+    env:
+      CODE: >-
+        ${{ github.event_name != 'pull_request'
+        || needs.detect-changes.result != 'success'
+        || needs.detect-changes.outputs.code == 'true' }}
     name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
     permissions:
@@ -30,15 +62,18 @@ jobs:
         language: [python, actions]
     steps:
       - name: Checkout
+        if: env.CODE == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Initialize CodeQL
+        if: env.CODE == 'true'
         uses: github/codeql-action/init@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2  # v4.38.2
         with:
           languages: ${{ matrix.language }}
           build-mode: none
 
       - name: Perform CodeQL analysis
+        if: env.CODE == 'true'
         uses: github/codeql-action/analyze@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2  # v4.38.2
         with:
           category: /language:${{ matrix.language }}
