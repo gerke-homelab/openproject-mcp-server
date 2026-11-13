@@ -87,3 +87,11 @@ python_version = "3.10"
 ignore_missing_imports = true
 warn_return_any = true
 warn_unused_ignores = true
+
+[tool.uv]
+# Resolution ignores releases uploaded in the last 7 days, matching Renovate's
+# minimumReleaseAge. Without it, a Renovate lock update resolves past the
+# version Renovate chose and its artifact check fails. uv.lock records the span
+# (`exclude-newer-span = "P7D"`); an urgent fix newer than that is let through
+# per package with `exclude-newer-package = { <pkg> = false }`.
+exclude-newer = "7 days"
