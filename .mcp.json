@@ -2,7 +2,7 @@
   "mcpServers": {
     "openproject": {
       "command": "uv",
-      "args": ["--directory", "/Users/tom.gerke/github/personal_github/openproject-mcp-server", "run", "openproject-mcp"],
+      "args": ["--directory", "${REPO_ROOT}/openproject-mcp-server", "run", "openproject-mcp"],
       "env": {
         "OPENPROJECT_URL": "https://openproject.thomasgerke.com",
         "OPENPROJECT_API_KEY": "${OPENPROJECT_API_KEY_TOM}"
