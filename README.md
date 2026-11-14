@@ -96,10 +96,15 @@ Add to your project `.mcp.json` or global `~/.claude/settings.json`:
 | `OPENPROJECT_URL` | ✅ | Base URL of your OpenProject instance |
 | `OPENPROJECT_API_KEY` | ✅ | API token from Account settings → Access tokens |
 | `OPENPROJECT_PROXY` | — | HTTP proxy URL (e.g. `http://proxy.company.com:8080`) |
-| `OPENPROJECT_CA_BUNDLE` | — | Path to custom CA bundle for self-signed TLS certs |
+| `OPENPROJECT_CA_BUNDLE` | — | PEM bundle trusted in addition to the OS trust store. Set it only where the OS store lacks the CA (Linux containers, CI) |
 | `OPENPROJECT_MCP_INCLUDE_TAGS` | — | Comma-separated tags — only expose matching tools |
 | `OPENPROJECT_MCP_EXCLUDE_TAGS` | — | Comma-separated tags — hide matching tools |
 | `LOG_LEVEL` | — | `DEBUG`, `INFO` (default), `WARNING`, `ERROR` |
+
+TLS certificates are verified against the operating system's trust store (macOS
+keychain, Windows certificate store, or the system CA bundle on Linux), through
+[`truststore`](https://pypi.org/project/truststore/). A private CA that the OS
+already trusts needs no configuration, whichever Python build runs the server.
 
 ---
 

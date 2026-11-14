@@ -32,6 +32,7 @@ dependencies = [
     "pydantic>=2.13.4,<3.0.0",
     "uvicorn>=0.52.1",
     "starlette>=1.6.0",
+    "truststore>=0.10.5",
 ]
 
 [project.scripts]

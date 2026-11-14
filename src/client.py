@@ -15,6 +15,7 @@ from typing import Any, ClassVar
 from urllib.parse import quote
 
 import aiohttp
+import truststore
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -204,22 +205,27 @@ class OpenProjectClient:
             base_url: The base URL of the OpenProject instance
             api_key: API key for authentication
             proxy: Optional HTTP proxy URL
-            ca_bundle: Optional path to a CA bundle (PEM) used to verify the
-                OpenProject TLS cert. Needed when the instance serves a cert from
-                a private CA (e.g. an internal step-ca) that is not in the system
-                trust store. Falls back to the OPENPROJECT_CA_BUNDLE env var.
-                When unset, the system default trust store is used.
+            ca_bundle: Optional path to a CA bundle (PEM) trusted in addition to
+                the OS trust store. Needed only where the OS store lacks the
+                issuing CA, e.g. Linux containers or CI. Falls back to the
+                OPENPROJECT_CA_BUNDLE env var.
         """
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.proxy = proxy
         self.ca_bundle = ca_bundle or os.getenv("OPENPROJECT_CA_BUNDLE") or None
 
-        # Build the SSL context once. If a CA bundle is configured, trust that
-        # CA explicitly (additive to the system roots); otherwise use defaults.
-        self.ssl_context = ssl.create_default_context()
+        # The OS trust store, not the interpreter's OpenSSL bundle: a private CA
+        # installed in the macOS keychain is otherwise trusted only by Python
+        # builds that happen to ship a bundle containing it.
+        self.ssl_context = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         if self.ca_bundle:
-            self.ssl_context.load_verify_locations(cafile=self.ca_bundle)
+            try:
+                self.ssl_context.load_verify_locations(cafile=self.ca_bundle)
+            except FileNotFoundError:
+                raise ValueError(
+                    f"OPENPROJECT_CA_BUNDLE file not found: {self.ca_bundle}"
+                ) from None
 
         # Setup headers with Basic Auth
         self.headers = {
