@@ -29,7 +29,8 @@ OPENPROJECT_API_KEY=your-api-token-here
 # HTTP proxy URL
 # OPENPROJECT_PROXY=http://proxy.company.com:8080
 
-# Path to custom CA bundle (PEM) for self-signed TLS certificates
+# CA bundle (PEM) trusted in addition to the OS trust store.
+# Set it only where the OS store lacks the CA (Linux containers, CI).
 # OPENPROJECT_CA_BUNDLE=/path/to/ca-bundle.pem
 
 # Log level: DEBUG | INFO | WARNING | ERROR (default: INFO)
