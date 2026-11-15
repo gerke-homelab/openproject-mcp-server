@@ -9,9 +9,10 @@ on:  # yamllint disable-line rule:truthy
 permissions:
   pull-requests: read
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+# No concurrency group: one Renovate push fires `synchronize` and `edited` a
+# second apart, and cancel-in-progress leaves the first run cancelled on the
+# head commit, which the dependency-review gate reads as a failed check.
+# Both runs are cheap and both pass.
 
 jobs:
   lint-title:
